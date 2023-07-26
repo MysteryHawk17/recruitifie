@@ -20,7 +20,7 @@ app.use("/api/resume", resumeRoutes);
 
 //server test route
 app.get("/", (req, res) => {
-    res.status(200).json({ message: "Gurudwara server is running" })
+    res.status(200).json({ message: "Recruitifie server is running" })
 
 })
 //connection to database
