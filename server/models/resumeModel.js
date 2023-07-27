@@ -193,6 +193,20 @@ const resumeSchema = mongoose.Schema({
             // required: true
         }
     }],
+    additionalCertificate: [{
+        certificateName: {
+            type: String
+        },
+        recievedDate: {
+            type: String
+        },
+        journeyHighlight: {
+            type: String
+        },
+        certificate: {
+            type: String
+        }
+    }]
 
 }, { timestamps: true })
 

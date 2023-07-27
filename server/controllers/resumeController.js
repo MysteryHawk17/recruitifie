@@ -2,6 +2,7 @@ const resumeDB = require("../models/resumeModel");
 const asynchandler = require("express-async-handler");
 const response = require("../middlewares/responseMiddleware")
 const cloudinary = require('../utils/cloudinary');
+const { default: mongoose } = require("mongoose");
 
 
 const test = asynchandler(async (req, res) => {
@@ -183,4 +184,195 @@ const extraCurricularUpdate = asynchandler(async (req, res) => {
     await findResume.save();
     response.successResponse(res, findResume, 'Updated the resume successfully');
 })
-module.exports = { test, getUserResume, personalUpdate, updateWorkExperience, mandatoryCertificates, extraCurricularUpdate };
+
+const updateTextFields = asynchandler(async (req, res) => {
+    const { name, phone, email, dob, currentAddress, workingStatus, mariatialStatus, academicDetails, workExperience, language } = req.body;
+    const { userId } = req.params;
+    if (userId == ":userId") {
+        return response.validationError(res, 'Cannot update the resume without the userId');
+    }
+    const findResume = await resumeDB.findOne({ userId: userId });
+    if (!findResume) {
+        return response.notFoundError(res, 'Unable to find the resume');
+    }
+    if (name) {
+        findResume.name = name;
+    }
+    if (phone) {
+        findResume.phone = phone;
+    }
+    if (email) {
+        findResume.email = email;
+    }
+    if (dob) {
+        findResume.dob = dob;
+    }
+    if (currentAddress) {
+        findResume.currentAddress = currentAddress;
+    }
+    if (workingStatus) {
+        findResume.workingStatus = workingStatus;
+    }
+    if (mariatialStatus) {
+        findResume.mariatialStatus = mariatialStatus;
+    }
+    if (language) {
+        const newArray = [...findResume.languages, ...language];
+        findResume.languages = newArray;
+    }
+    if (academicDetails) {
+        const newArray = [...findResume.academicDetails, ...academicDetails];
+        findResume.academicDetails = newArray;
+    }
+    if (workExperience) {
+        const newArray = [...findResume.workExperience, ...workExperience];
+        findResume.workExperience = newArray;
+    }
+    const savedResume = await findResume.save();
+    if (!savedResume) {
+        return response.internalServerError(res, 'Failed to save the resume');
+    }
+    response.successResponse(res, savedResume, 'Updated the resume');
+})
+
+const uploadFields = asynchandler(async (req, res) => {
+    const { academicCertificateDetails, companyCertificateDetails, courseCertificateDetails, extraCurricularsCertificateDetails, additionalCertificateDetails } = req.body;
+    const { userId } = req.params;
+    if (userId == ":userId") {
+        return response.validationError(res, 'Cannot update the resume without the userId');
+    }
+    const findResume = await resumeDB.findOne({ userId: userId });
+    if (!findResume) {
+        return response.notFoundError(res, 'Unable to find the resume');
+    }
+    const { academicCertificates, companyCertificate, courseCertificate, extraCurricularsCertificates, matriculation, highestQualificationCertificate, additionalCertificates } = req.files;
+    if (matriculation) {
+        const deleteCloudinaryData = await cloudinary.uploader.destroy(findResume.matriculationCetificate);
+        const uploadedData = await cloudinary.uploader.upload(matriculation[0].path, {
+            folder: "Recrutilife"
+        })
+        findResume.matriculationCetificate = uploadedData.secure_url;
+    }
+    if (highestQualificationCertificate) {
+        const deleteCloudinaryData = await cloudinary.uploader.destroy(findResume.highestQualificationCertificate);
+        const uploadedData = await cloudinary.uploader.upload(highestQualificationCertificate[0].path, {
+            folder: "Recrutilife"
+        })
+        findResume.highestQualificationCertificate = uploadedData.secure_url;
+    }
+    const educationCertificates = [];
+    if (academicCertificates) {
+        const details = JSON.parse(academicCertificateDetails);
+        for (var i = 0; i < academicCertificates.length; i++) {
+            const uploadedData = await cloudinary.uploader.upload(academicCertificates[i].path, {
+                folder: "Recrutilife"
+            })
+            const obj = {};
+            obj.instituteName = details[i].instituteName;
+            obj.certificate = uploadedData.secure_url;
+            obj.dateIssued = details[i].dateIssued;
+            educationCertificates.push(obj);
+        }
+        const newArray = [...findResume.educationCertificates, ...educationCertificates];
+        findResume.educationCertificates = newArray;
+    }
+    const companyCertificates = [];
+    if (companyCertificate) {
+        const details = JSON.parse(companyCertificateDetails);
+        for (var i = 0; i < companyCertificate.length; i++) {
+            const uploadedData = await cloudinary.uploader.upload(companyCertificate[i].path, {
+                folder: "Recrutilife"
+            })
+            const obj = {};
+            obj.companyName = details[i].companyName;
+            obj.certificate = uploadedData.secure_url;
+            obj.dateIssued = details[i].dateIssued;
+            companyCertificates.push(obj);
+        }
+        const newArray = [...findResume.companyCertificates, ...companyCertificates];
+        findResume.companyCertificates = newArray;
+    }
+    const certificatCourse = [];
+    if (courseCertificate) {
+        const details = JSON.parse(courseCertificateDetails);
+        for (var i = 0; i < courseCertificate.length; i++) {
+            const uploadedData = await cloudinary.uploader.upload(courseCertificate[i].path, {
+                folder: "Recrutilife"
+            })
+            const obj = {};
+            obj.platform = details[i].platform;
+            obj.universityName = details[i].universityName;
+            obj.courseName = details[i].courseName;
+            obj.certificateWebLink = details[i].certificateWebLink;
+            obj.receivingData = details[i].receivingData;
+            obj.certificate = uploadedData.secure_url;
+            obj.dateIssued = details[i].dateIssued;
+            certificatCourse.push(obj);
+        }
+        const newArray = [...findResume.certificatCourse, ...certificatCourse];
+        findResume.certificatCourse = newArray;
+    }
+    const extraCurricularsCertificate = [];
+    if (extraCurricularsCertificates) {
+        const details = JSON.parse(extraCurricularsCertificateDetails);
+        for (var i = 0; i < extraCurricularsCertificates.length; i++) {
+            const uploadedData = await cloudinary.uploader.upload(extraCurricularsCertificates[i].path, {
+                folder: "Recrutilife"
+            })
+            const obj = {};
+            obj.activity = details[i].activity;
+            obj.journey = details[i].journey;
+            obj.document = uploadedData.secure_url;
+            extraCurricularsCertificate.push(obj);
+        }
+        const newArray = [...findResume.extraCurricularsCertificate, ...extraCurricularsCertificate];
+        findResume.extraCurricularsCertificate = newArray;
+    }
+    const additionalCertificate = [];
+    if (additionalCertificates) {
+        const details = JSON.parse(additionalCertificateDetails);
+        for (var i = 0; i < additionalCertificate.length; i++) {
+            const uploadedData = await cloudinary.uploader.upload(additionalCertificate[i].path, {
+                folder: "Recrutilife"
+            })
+            const obj = {};
+            obj.certificateName = details[i].certificateName;
+            obj.recievedDate = details[i].recievedDate;
+            obj.journeyHighlight = details[i].journeyHighlight;
+            obj.certificate = uploadedData.secure_url;
+            additionalCertificate.push(obj);
+        }
+        const newArray = [...findResume.additionalCertificate, ...additionalCertificate];
+        findResume.additionalCertificate = newArray;
+    }
+    const savedResume = await findResume.save();
+    if (!savedResume) {
+        return response.internalServerError(res, 'Failed to update the resume');
+    }
+    response.successResponse(res, findResume, "Updated the resume successfully");
+})
+
+const deleteUploads = asynchandler(async (req, res) => {
+    const { id, field } = req.body;
+    const { userId } = req.params;
+    const findResume = await resumeDB.findOne({ userId: userId });
+    if (!findResume) {
+        return response.notFoundError(res, 'Unable to find the resume');
+    }
+    // console.log(findResume[field])
+    const findIndex = findResume[field].findIndex((obj) => obj._id == id);
+    // console.log(findIndex);
+    if (findIndex > -1) {
+        findResume[field].splice(findIndex, 1);
+    }
+
+    const saved = await findResume.save();
+    if (!saved) {
+        return response.internalServerError(res, 'Failed to update the resume');
+    }
+
+    response.successResponse(res, findResume, 'Updated the resume ');
+
+})
+
+module.exports = { test, getUserResume, personalUpdate, updateWorkExperience, mandatoryCertificates, extraCurricularUpdate, updateTextFields, uploadFields, deleteUploads };
